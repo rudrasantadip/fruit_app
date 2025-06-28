@@ -13,12 +13,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y \
@@ -27,26 +27,36 @@ jobs:
             zip \
             unzip \
             openjdk-17-jdk \
-            python3-pip \
-            python3.11-venv
+            python3.11 \
+            python3.11-venv \
+            python3.11-dev \
+            python3-pip
+
+      - name: Create virtual environment and install Buildozer
+        run: |
           python3.11 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install cython buildozer
 
-      - name: Generate spec file (if missing)
+      - name: Generate buildozer.spec (if missing)
         run: |
           source venv/bin/activate
           if [ ! -f buildozer.spec ]; then
             buildozer init
           fi
 
+      - name: Patch buildozer.spec for Android API & Build Tools
+        run: |
+          sed -i 's/^# *android.api =.*/android.api = 33/' buildozer.spec
+          sed -i 's/^# *android.build_tools_version =.*/android.build_tools_version = 33.0.2/' buildozer.spec
+
       - name: Build APK
         run: |
           source venv/bin/activate
-          buildozer android debug
+          buildozer -v android debug
 
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: kivy-apk
